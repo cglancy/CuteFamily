@@ -1,0 +1,9 @@
+*.stash
+*.db
+*.vcxproj
+*.filters
+*.rc
+build/debug
+build/release
+test/familysearchsecret.h
+build/target_wrapper.bat
