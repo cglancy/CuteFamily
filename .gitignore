@@ -3,7 +3,7 @@
 *.vcxproj
 *.filters
 *.rc
-build/debug
-build/release
+build/windows/src
+build/windows/test
 test/familysearchsecret.h
-build/target_wrapper.bat
+build/windows/CuteFamily.sln

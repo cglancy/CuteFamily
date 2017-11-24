@@ -15,10 +15,10 @@ HEADERS += familysearchsecret.h \
 INCLUDEPATH += ../src
 
 CONFIG(debug, debug|release) {
-    LIBS += -L./debug -lCuteFamily0
-    PRE_TARGETDEPS += ./debug/CuteFamily0.dll
+    LIBS += -L../src/debug -lCuteFamily0
+    PRE_TARGETDEPS += ../src/debug/CuteFamily0.dll
 }
 else {
-    LIBS += -L./release -lCuteFamily0
-    PRE_TARGETDEPS += ./release/CuteFamily0.dll
+    LIBS += -L../src/release -lCuteFamily0
+    PRE_TARGETDEPS += ../src/release/CuteFamily0.dll
 }
