@@ -13,22 +13,22 @@
 * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-#ifndef CUTEFAMILY_FAMILYSEARCHREPLY_H
-#define CUTEFAMILY_FAMILYSEARCHREPLY_H
+#ifndef CGFAMILY_FAMILYSEARCHREPLY_H
+#define CGFAMILY_FAMILYSEARCHREPLY_H
 #pragma once
 
-#include "cutefamily.h"
+#include "cgfamily.h"
 #include <QObject>
 #include <QByteArray>
 #include <QVariant>
 
 class QNetworkReply;
 
-namespace CuteFamily
+namespace cg
 {
     class FamilySearch;
 
-    class CUTEFAMILY_API FamilySearchReply : public QObject
+    class CGFAMILY_API FamilySearchReply : public QObject
     {
         Q_OBJECT
     public:
@@ -62,4 +62,4 @@ namespace CuteFamily
     };
 }
 
-#endif // CUTEFAMILY_FAMILYSEARCHREPLY_H
+#endif // CGFAMILY_FAMILYSEARCHREPLY_H

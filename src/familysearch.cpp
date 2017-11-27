@@ -25,7 +25,7 @@
 #include <QJsonObject>
 #include <QJsonValue>
 
-namespace CuteFamily {
+namespace cg {
 
     FamilySearch::FamilySearch(Environment environment, QObject *parent)
         : QObject(parent),

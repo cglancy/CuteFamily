@@ -21,7 +21,7 @@
 #include <QJsonArray>
 #include <QJsonValue>
 
-namespace CuteFamily {
+namespace cg {
 
     FamilySearchReply::FamilySearchReply(QNetworkReply *pReply)
         : _pReply(pReply),

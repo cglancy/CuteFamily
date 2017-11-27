@@ -13,7 +13,7 @@
 * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-#include "testcutefamily.h"
+#include "familytest.h"
 #include "familysearch.h"
 #include "familysearchreply.h"
 
@@ -26,19 +26,19 @@
 #include <QDebug>
 #include <QScopedPointer>
 
-using namespace CuteFamily;
+using namespace cg;
 
-QTEST_MAIN(TestCuteFamily)
+QTEST_MAIN(FamilyTest)
 
-void TestCuteFamily::initTestCase()
+void FamilyTest::initTestCase()
 {
 }
 
-void TestCuteFamily::cleanupTestCase()
+void FamilyTest::cleanupTestCase()
 {
 }
 
-void TestCuteFamily::testOAuthUnauthenticated()
+void FamilyTest::testOAuthUnauthenticated()
 {
     QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch());
 
@@ -50,7 +50,7 @@ void TestCuteFamily::testOAuthUnauthenticated()
     QVERIFY(!token.isEmpty());
 }
 
-void TestCuteFamily::testOAuthPassword()
+void FamilyTest::testOAuthPassword()
 {
     QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch());
 
@@ -62,7 +62,7 @@ void TestCuteFamily::testOAuthPassword()
     QVERIFY(!token.isEmpty());
 }
 
-void TestCuteFamily::testCurrentUser()
+void FamilyTest::testCurrentUser()
 {
     QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch());
 
@@ -79,7 +79,7 @@ void TestCuteFamily::testCurrentUser()
     QVERIFY(users.size() == 1);
 }
 
-void TestCuteFamily::testPlaces()
+void FamilyTest::testPlaces()
 {
     QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch());
 
@@ -95,7 +95,7 @@ void TestCuteFamily::testPlaces()
     QVERIFY(map["title"] == "Place Search Results");
 }
 
-void TestCuteFamily::testPersonAncestry()
+void FamilyTest::testPersonAncestry()
 {
     QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch());
 

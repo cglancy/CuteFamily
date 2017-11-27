@@ -1,7 +1,7 @@
 QT       += core network
 QT       -= gui
 
-TARGET = CuteFamily
+TARGET = cgFamily
 CONFIG   += dll
 TEMPLATE = lib
 VERSION	= 0.1.1
@@ -12,7 +12,7 @@ SOURCES += familysearch.cpp \
 HEADERS += \
     familysearch.h \
 	familysearchreply.h \
-    cutefamily.h
+    cgfamily.h
 
-DEFINES += CUTEFAMILY_EXPORTS
+DEFINES += CGFAMILY_EXPORTS
 

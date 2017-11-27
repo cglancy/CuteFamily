@@ -13,24 +13,24 @@
 * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-#ifndef CUTEFAMILY_H
-#define CUTEFAMILY_H
+#ifndef CGFAMILY_H
+#define CGFAMILY_H
 #pragma once
 
 #include <QtGlobal>
 
 #ifdef Q_OS_WIN32
 
-#ifdef CUTEFAMILY_EXPORTS
-#define CUTEFAMILY_API __declspec(dllexport)
+#ifdef CGFAMILY_EXPORTS
+#define CGFAMILY_API __declspec(dllexport)
 #else
-#define CUTEFAMILY_API __declspec(dllimport)
+#define CGFAMILY_API __declspec(dllimport)
 #endif
 
 #else
 
-#define CUTEFAMILY_API __attribute__((visibility("default")))
+#define CGFAMILY_API __attribute__((visibility("default")))
 
 #endif
 
-#endif // CUTEFAMILY_H
+#endif // CGFAMILY_H

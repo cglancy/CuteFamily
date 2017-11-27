@@ -4,8 +4,8 @@ set QMAKESPEC=win32-msvc
 
 call "%VSDIR%\VC\vcvarsall.bat" x64
 
-%QTDIR%\bin\qmake.exe -tp vc -r ../../CuteFamily.pro
+%QTDIR%\bin\qmake.exe -tp vc -r ../../cgFamily.pro
 
 set PATH=%PATH%;%QTDIR%\bin;%~dp0\src\debug
 
-devenv CuteFamily.sln
+devenv cgFamily.sln
