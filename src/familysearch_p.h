@@ -13,27 +13,43 @@
 * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-#ifndef CGFAMILY_FAMILYTEST_H
-#define CGFAMILY_FAMILYTEST_H
+#ifndef CGFAMILY_FAMILYSEARCH_P_H
+#define CGFAMILY_FAMILYSEARCH_P_H
 #pragma once
 
+#include "familysearch.h"
 #include <QObject>
+#include <QString>
+#include <QByteArray>
 
-class FamilyTest : public QObject
+class QNetworkAccessManager;
+
+namespace cg
 {
-    Q_OBJECT
-private slots:
-    void initTestCase();
-    void cleanupTestCase();
+    class FamilySearchPrivate : public QObject
+    {
+        Q_OBJECT
+        Q_DISABLE_COPY(FamilySearchPrivate)
+        Q_DECLARE_PUBLIC(FamilySearch)
+        FamilySearch * const q_ptr;
 
-    void testLoginUnauthenticated();
-    void testLogin();
-    void testCurrentUser();
-    void testPlaces();
-    void testPersonAncestry();
-    void testEtag();
+    public:
+        FamilySearchPrivate(FamilySearch *pFS, const QString &applicationKey, FamilySearch::Environment environment);
 
-private:
-};
+        static QByteArray acceptValue(FamilySearch::MediaType mediaType);
+        QNetworkRequest buildRequest(const QString &apiRoute, FamilySearch::MediaType mediaType = FamilySearch::NoMediaType) const;
+        QString ipAddress() const;
+        QString accessTokenUrl() const;
 
-#endif // CGFAMILY_FAMILYTEST_H
+        QNetworkAccessManager *pNam;
+        FamilySearch::Environment environment;
+        QByteArray userAgent;
+        QString applicationKey, accessToken, baseUrl;
+
+    public slots:
+        void loginFinished();
+        void logoutFinished();
+    };
+}
+
+#endif // CGFAMILY_FAMILYSEARCH_P_H

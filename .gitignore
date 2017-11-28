@@ -7,3 +7,5 @@ build/windows/src
 build/windows/test
 test/familysearchsecret.h
 build/windows/CuteFamily.sln
+build/windows/cgFamily.sln
+*.opendb

@@ -28,11 +28,16 @@ class QNetworkAccessManager;
 
 namespace cg
 {
+    class FamilySearchPrivate;
     class FamilySearchReply;
 
     class CGFAMILY_API FamilySearch : public QObject
     {
         Q_OBJECT
+        Q_DECLARE_PRIVATE(FamilySearch)
+        Q_DISABLE_COPY(FamilySearch)
+        FamilySearchPrivate * const d_ptr;
+
     public:
         enum Environment
         {
@@ -51,43 +56,30 @@ namespace cg
             FamilySearchJsonMediaType
         };
 
-    public:
-        FamilySearch(Environment environment = IntegrationEnvironment, QObject *parent = nullptr);
+        FamilySearch(const QString &applicationKey, Environment environment = IntegrationEnvironment, QObject *parent = nullptr);
         ~FamilySearch();
 
-        Environment environment() const { return _environment; }
+        QString applicationKey() const;
 
-        QString accessToken() const { return _accessToken; }
-        void setAccessToken(const QString &accessToken) { _accessToken = accessToken; }
+        Environment environment() const;
 
-        void oauthUnauthenticated(const QString &applicationKey);
-        void oauthPassword(const QString &username, const QString &password, const QString &applicationKey);
+        QString accessToken() const;
+        void setAccessToken(const QString &accessToken);
 
-        FamilySearchReply* head(const QString &apiRoute, MediaType mediaType = ApplicationJsonMediaType);
-        FamilySearchReply* get(const QString &apiRoute, MediaType mediaType = ApplicationJsonMediaType);
-        FamilySearchReply* put(const QString &apiRoute, const QByteArray &content, MediaType mediaType = ApplicationJsonMediaType);
-        FamilySearchReply* post(const QString &apiRoute, const QByteArray &content, MediaType mediaType = ApplicationJsonMediaType);
-        FamilySearchReply* del(const QString &apiRoute);
+        bool isLoggedIn() const;
+        void login(const QString &username, const QString &password);
+        void loginUnauthenticated();
+        void logout();
+
+        FamilySearchReply * head(const QString &apiRoute, MediaType mediaType = ApplicationJsonMediaType);
+        FamilySearchReply * get(const QString &apiRoute, MediaType mediaType = ApplicationJsonMediaType);
+        FamilySearchReply * put(const QString &apiRoute, const QByteArray &content, MediaType mediaType = ApplicationJsonMediaType);
+        FamilySearchReply * post(const QString &apiRoute, const QByteArray &content, MediaType mediaType = ApplicationJsonMediaType);
+        FamilySearchReply * del(const QString &apiRoute);
 
     signals:
-        void oauthFinished();
-
-    private slots:
-        void oauthReplyFinished();
-
-    private:
-        static QByteArray acceptValue(MediaType mediaType);
-        QNetworkRequest buildRequest(const QString &apiRoute, MediaType mediaType = NoMediaType) const;
-        QString ipAddress() const;
-        QString accessTokenUrl() const;
-
-    private:
-        Q_DISABLE_COPY(FamilySearch)
-
-        QNetworkAccessManager *_pNam;
-        Environment _environment;
-        QByteArray _userAgent;
-        QString _accessToken, _baseUrl;
+        void loginFinished(int status);
+        void logoutFinished(int status);
     };
 }
 

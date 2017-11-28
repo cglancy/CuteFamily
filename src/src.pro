@@ -11,7 +11,9 @@ SOURCES += familysearch.cpp \
 
 HEADERS += \
     familysearch.h \
+	familysearch_p.h \
 	familysearchreply.h \
+	familysearchreply_p.h \
     cgfamily.h
 
 DEFINES += CGFAMILY_EXPORTS

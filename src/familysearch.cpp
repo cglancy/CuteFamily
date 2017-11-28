@@ -14,6 +14,7 @@
 * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 #include "familysearch.h"
+#include "familysearch_p.h"
 #include "familysearchreply.h"
 
 #include <QNetworkAccessManager>
@@ -24,47 +25,50 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QCoreApplication>
 
 namespace cg {
 
-    FamilySearch::FamilySearch(Environment environment, QObject *parent)
-        : QObject(parent),
-        _environment(environment)
+    //
+    // FamilySearchPrivate
+    // 
+
+    FamilySearchPrivate::FamilySearchPrivate(FamilySearch *pFS, const QString &appKey, FamilySearch::Environment env)
+        : q_ptr(pFS),
+        applicationKey(appKey),
+        environment(env)
     {
-        _pNam = new QNetworkAccessManager(this);
-        _userAgent = "CuteFamily 0.1";
+        pNam = new QNetworkAccessManager(this);
+        userAgent = QString("%1 %2").arg(QCoreApplication::applicationName())
+            .arg(QCoreApplication::applicationVersion()).toUtf8();
 
         switch (environment)
         {
-        case ProductionEnvironment:
-            _baseUrl = "https://api.familysearch.org/";
+        case FamilySearch::ProductionEnvironment:
+            baseUrl = "https://api.familysearch.org";
             break;
-        case BetaEnvironment:
-            _baseUrl = "https://beta.familysearch.org/";
+        case FamilySearch::BetaEnvironment:
+            baseUrl = "https://beta.familysearch.org";
             break;
-        case IntegrationEnvironment:
-            _baseUrl = "https://integration.familysearch.org/";
+        case FamilySearch::IntegrationEnvironment:
+            baseUrl = "https://integration.familysearch.org";
             break;
         }
     }
 
-    FamilySearch::~FamilySearch()
-    {
-    }
-
-    QString FamilySearch::accessTokenUrl() const
+    QString FamilySearchPrivate::accessTokenUrl() const
     {
         QString urlStr;
 
-        switch (_environment)
+        switch (environment)
         {
-        case ProductionEnvironment:
+        case FamilySearch::ProductionEnvironment:
             urlStr = "https://ident.familysearch.org/cis-web/oauth2/v3/token";
             break;
-        case BetaEnvironment:
+        case FamilySearch::BetaEnvironment:
             urlStr = "https://identbeta.familysearch.org/cis-web/oauth2/v3/token";
             break;
-        case IntegrationEnvironment:
+        case FamilySearch::IntegrationEnvironment:
             urlStr = "https://identint.familysearch.org/cis-web/oauth2/v3/token";
             break;
         }
@@ -72,47 +76,10 @@ namespace cg {
         return urlStr;
     }
 
-    void FamilySearch::oauthUnauthenticated(const QString &applicationKey)
+    void FamilySearchPrivate::loginFinished()
     {
-        QString urlStr = accessTokenUrl();
+        Q_Q(FamilySearch);
 
-        QUrlQuery query;
-        query.addQueryItem("grant_type", "unauthenticated_session");
-        query.addQueryItem("client_id", applicationKey);
-        query.addQueryItem("ip_address", ipAddress());
-
-        QByteArray content = query.toString(QUrl::FullyEncoded).toUtf8();
-
-        QUrl url(urlStr);
-        QNetworkRequest req(url);
-        req.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
-        req.setRawHeader("Accept", "application/json");
-        QNetworkReply *pReply = _pNam->post(req, content);
-        connect(pReply, &QNetworkReply::finished, this, &FamilySearch::oauthReplyFinished);
-    }
-
-    void FamilySearch::oauthPassword(const QString &username, const QString &password, const QString &applicationKey)
-    {
-        QString urlStr = accessTokenUrl();
-
-        QUrlQuery query;
-        query.addQueryItem("grant_type", "password");
-        query.addQueryItem("username", username);
-        query.addQueryItem("password", password);
-        query.addQueryItem("client_id", applicationKey);
-
-        QByteArray content = query.toString(QUrl::FullyEncoded).toUtf8();
-
-        QUrl url(urlStr);
-        QNetworkRequest req(url);
-        req.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
-        req.setRawHeader("Accept", "application/json");
-        QNetworkReply *pReply = _pNam->post(req, content);
-        connect(pReply, &QNetworkReply::finished, this, &FamilySearch::oauthReplyFinished);
-    }
-
-    void FamilySearch::oauthReplyFinished()
-    {
         QNetworkReply *pReply = qobject_cast<QNetworkReply*>(sender());
         if (!pReply)
             return;
@@ -127,7 +94,7 @@ namespace cg {
             {
                 QJsonObject obj = doc.object();
                 QJsonValue value = obj.value("access_token");
-                _accessToken = value.toString().toUtf8();
+                accessToken = value.toString().toUtf8();
             }
         }
         else
@@ -136,86 +103,77 @@ namespace cg {
             qDebug() << "Error: " << status << ", " << data;
         }
 
-        emit oauthFinished();
+        emit q->loginFinished(status);
 
         pReply->deleteLater();
     }
 
-    QNetworkRequest FamilySearch::buildRequest(const QString &apiRoute, MediaType mediaType) const
+    void FamilySearchPrivate::logoutFinished()
     {
-        QUrl url(_baseUrl + apiRoute);
+        Q_Q(FamilySearch);
+
+        QNetworkReply *pReply = qobject_cast<QNetworkReply*>(sender());
+        if (!pReply)
+            return;
+
+        int status = pReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+        if (pReply->error() == QNetworkReply::NoError && status == 204)
+        {
+            accessToken.clear();
+        }
+        else
+        {
+            QByteArray data = pReply->readAll();
+            qDebug() << "Error: " << status << ", " << data;
+        }
+
+        emit q->logoutFinished(status);
+
+        pReply->deleteLater();
+    }
+
+    QNetworkRequest FamilySearchPrivate::buildRequest(const QString &apiRoute, FamilySearch::MediaType mediaType) const
+    {
+        QString fullUrlStr = baseUrl;
+        if (apiRoute.startsWith("/"))
+            fullUrlStr += apiRoute;
+        else
+            fullUrlStr += "/" + apiRoute;
+
+        QUrl url(fullUrlStr);
         QNetworkRequest req(url);
 
-        req.setRawHeader("User-Agent", _userAgent);
+        req.setRawHeader("User-Agent", userAgent);
 
-        if (mediaType != NoMediaType)
+        if (mediaType != FamilySearch::NoMediaType)
             req.setRawHeader("Accept", acceptValue(mediaType));
 
-        if (!_accessToken.isEmpty())
-            req.setRawHeader("Authorization", "Bearer " + _accessToken.toUtf8());
+        if (!accessToken.isEmpty())
+            req.setRawHeader("Authorization", "Bearer " + accessToken.toUtf8());
 
         return req;
     }
 
-    FamilySearchReply* FamilySearch::head(const QString &apiRoute, MediaType mediaType)
-    {
-        QNetworkRequest req = buildRequest(apiRoute, mediaType);
-        QNetworkReply *pReply = _pNam->head(req);
-        FamilySearchReply *fsReply = new FamilySearchReply(pReply);
-        return fsReply;
-    }
-
-    FamilySearchReply* FamilySearch::get(const QString &apiRoute, MediaType mediaType)
-    {
-        QNetworkRequest req = buildRequest(apiRoute, mediaType);
-        QNetworkReply *pReply = _pNam->get(req);
-        FamilySearchReply *fsReply = new FamilySearchReply(pReply);
-        return fsReply;
-    }
-
-    FamilySearchReply* FamilySearch::put(const QString &apiRoute, const QByteArray &content, MediaType mediaType)
-    {
-        QNetworkRequest req = buildRequest(apiRoute, mediaType);
-        QNetworkReply *pReply = _pNam->put(req, content);
-        FamilySearchReply *fsReply = new FamilySearchReply(pReply);
-        return fsReply;
-    }
-
-    FamilySearchReply* FamilySearch::post(const QString &apiRoute, const QByteArray &content, MediaType mediaType)
-    {
-        QNetworkRequest req = buildRequest(apiRoute, mediaType);
-        QNetworkReply *pReply = _pNam->post(req, content);
-        FamilySearchReply *fsReply = new FamilySearchReply(pReply);
-        return fsReply;
-    }
-
-    FamilySearchReply* FamilySearch::del(const QString &apiRoute)
-    {
-        QNetworkRequest req = buildRequest(apiRoute, NoMediaType);
-        QNetworkReply *pReply = _pNam->deleteResource(req);
-        FamilySearchReply *fsReply = new FamilySearchReply(pReply);
-        return fsReply;
-    }
-
-    QByteArray FamilySearch::acceptValue(MediaType mediaType)
+    QByteArray FamilySearchPrivate::acceptValue(FamilySearch::MediaType mediaType)
     {
         QByteArray value;
 
         switch (mediaType)
         {
-        case ApplicationJsonMediaType:
+        case FamilySearch::ApplicationJsonMediaType:
             value = "application/json";
             break;
-        case GedcomJsonMediaType:
+        case FamilySearch::GedcomJsonMediaType:
             value = "application/x-gedcomx-v1+json";
             break;
-        case GedcomRecordsJsonMediaType:
+        case FamilySearch::GedcomRecordsJsonMediaType:
             value = "application/x-gedcomx-records-v1+json";
             break;
-        case GedcomAtomJsonMediaType:
+        case FamilySearch::GedcomAtomJsonMediaType:
             value = "application/x-gedcomx-atom+json";
             break;
-        case FamilySearchJsonMediaType:
+        case FamilySearch::FamilySearchJsonMediaType:
             value = "application/x-fs-v1+json";
             break;
         }
@@ -223,7 +181,7 @@ namespace cg {
         return value;
     }
 
-    QString FamilySearch::ipAddress() const
+    QString FamilySearchPrivate::ipAddress() const
     {
         QList<QHostAddress> list = QNetworkInterface::allAddresses();
         for (auto & hostAddress : list)
@@ -233,5 +191,147 @@ namespace cg {
         }
 
         return QString();
+    }
+
+    //
+    // FamilySearch
+    //
+
+    FamilySearch::FamilySearch(const QString &applicationKey, Environment environment, QObject *parent)
+        : QObject(parent),
+        d_ptr(new FamilySearchPrivate(this, applicationKey, environment))
+    {
+    }
+
+    FamilySearch::~FamilySearch()
+    {
+    }
+
+    QString FamilySearch::applicationKey() const
+    {
+        Q_D(const FamilySearch);
+        return d->applicationKey;
+    }
+
+    FamilySearch::Environment FamilySearch::environment() const
+    {
+        Q_D(const FamilySearch);
+        return d->environment;
+    }
+
+    QString FamilySearch::accessToken() const
+    {
+        Q_D(const FamilySearch);
+        return d->accessToken;
+    }
+
+    void FamilySearch::setAccessToken(const QString &accessToken)
+    {
+        Q_D(FamilySearch);
+        d->accessToken = accessToken;
+    }
+
+    bool FamilySearch::isLoggedIn() const
+    {
+        Q_D(const FamilySearch);
+        return !d->accessToken.isEmpty();
+    }
+
+    void FamilySearch::loginUnauthenticated()
+    {
+        Q_D(FamilySearch);
+
+        QString urlStr = d->accessTokenUrl();
+
+        QUrlQuery query;
+        query.addQueryItem("grant_type", "unauthenticated_session");
+        query.addQueryItem("client_id", d->applicationKey);
+        query.addQueryItem("ip_address", d->ipAddress());
+
+        QByteArray content = query.toString(QUrl::FullyEncoded).toUtf8();
+
+        QUrl url(urlStr);
+        QNetworkRequest req(url);
+        req.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
+        req.setRawHeader("Accept", "application/json");
+        QNetworkReply *pReply = d->pNam->post(req, content);
+        connect(pReply, &QNetworkReply::finished, d, &FamilySearchPrivate::loginFinished);
+    }
+
+    void FamilySearch::login(const QString &username, const QString &password)
+    {
+        Q_D(FamilySearch);
+
+        QString urlStr = d->accessTokenUrl();
+
+        QUrlQuery query;
+        query.addQueryItem("grant_type", "password");
+        query.addQueryItem("username", username);
+        query.addQueryItem("password", password);
+        query.addQueryItem("client_id", d->applicationKey);
+
+        QByteArray content = query.toString(QUrl::FullyEncoded).toUtf8();
+
+        QUrl url(urlStr);
+        QNetworkRequest req(url);
+        req.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/x-www-form-urlencoded"));
+        req.setRawHeader("Accept", "application/json");
+        QNetworkReply *pReply = d->pNam->post(req, content);
+        connect(pReply, &QNetworkReply::finished, d, &FamilySearchPrivate::loginFinished);
+    }
+
+    void FamilySearch::logout()
+    {
+        Q_D(FamilySearch);
+
+        if (!isLoggedIn())
+            return;
+            
+        QString urlStr = d->baseUrl + "/platform/logout";
+        QUrl url(urlStr);
+        QNetworkRequest req(url);
+        req.setRawHeader("Authorization", "Bearer " + d->accessToken.toUtf8());
+        QNetworkReply *pReply = d->pNam->post(req, QByteArray());
+        connect(pReply, &QNetworkReply::finished, d, &FamilySearchPrivate::logoutFinished);
+    }
+
+    FamilySearchReply* FamilySearch::head(const QString &apiRoute, MediaType mediaType)
+    {
+        Q_D(FamilySearch);
+        QNetworkRequest req = d->buildRequest(apiRoute, mediaType);
+        QNetworkReply *pReply = d->pNam->head(req);
+        return new FamilySearchReply(pReply);
+    }
+
+    FamilySearchReply* FamilySearch::get(const QString &apiRoute, MediaType mediaType)
+    {
+        Q_D(FamilySearch);
+        QNetworkRequest req = d->buildRequest(apiRoute, mediaType);
+        QNetworkReply *pReply = d->pNam->get(req);
+        return new FamilySearchReply(pReply);
+    }
+
+    FamilySearchReply* FamilySearch::put(const QString &apiRoute, const QByteArray &content, MediaType mediaType)
+    {
+        Q_D(FamilySearch);
+        QNetworkRequest req = d->buildRequest(apiRoute, mediaType);
+        QNetworkReply *pReply = d->pNam->put(req, content);
+        return new FamilySearchReply(pReply);
+    }
+
+    FamilySearchReply* FamilySearch::post(const QString &apiRoute, const QByteArray &content, MediaType mediaType)
+    {
+        Q_D(FamilySearch);
+        QNetworkRequest req = d->buildRequest(apiRoute, mediaType);
+        QNetworkReply *pReply = d->pNam->post(req, content);
+        return new FamilySearchReply(pReply);
+    }
+
+    FamilySearchReply* FamilySearch::del(const QString &apiRoute)
+    {
+        Q_D(FamilySearch);
+        QNetworkRequest req = d->buildRequest(apiRoute, NoMediaType);
+        QNetworkReply *pReply = d->pNam->deleteResource(req);
+        return new FamilySearchReply(pReply);
     }
 }

@@ -13,27 +13,36 @@
 * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-#ifndef CGFAMILY_FAMILYTEST_H
-#define CGFAMILY_FAMILYTEST_H
+#ifndef CGFAMILY_FAMILYSEARCHREPLY_P_H
+#define CGFAMILY_FAMILYSEARCHREPLY_P_H
 #pragma once
 
+#include "familysearchreply.h"
 #include <QObject>
+#include <QByteArray>
 
-class FamilyTest : public QObject
+class QNetworkReply;
+
+namespace cg
 {
-    Q_OBJECT
-private slots:
-    void initTestCase();
-    void cleanupTestCase();
+    class FamilySearchReplyPrivate : public QObject
+    {
+        Q_OBJECT
+        Q_DISABLE_COPY(FamilySearchReplyPrivate)
+        Q_DECLARE_PUBLIC(FamilySearchReply)
+        FamilySearchReply * const q_ptr;
 
-    void testLoginUnauthenticated();
-    void testLogin();
-    void testCurrentUser();
-    void testPlaces();
-    void testPersonAncestry();
-    void testEtag();
+    public:
+        FamilySearchReplyPrivate(FamilySearchReply *pFsReply, QNetworkReply *pNetworkReply);
+        ~FamilySearchReplyPrivate();
 
-private:
-};
+        QNetworkReply *pReply;
+        QByteArray data;
+        FamilySearchReply::Error error;
 
-#endif // CGFAMILY_FAMILYTEST_H
+    private slots:
+        void replyFinished();
+    };
+}
+
+#endif // CGFAMILY_FAMILYSEARCHREPLY_P_H

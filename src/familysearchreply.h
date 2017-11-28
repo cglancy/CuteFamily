@@ -21,16 +21,25 @@
 #include <QObject>
 #include <QByteArray>
 #include <QVariant>
+#include <QDateTime>
 
 class QNetworkReply;
 
 namespace cg
 {
     class FamilySearch;
+    class FamilySearchReplyPrivate;
 
     class CGFAMILY_API FamilySearchReply : public QObject
     {
         Q_OBJECT
+        Q_DECLARE_PRIVATE(FamilySearchReply)
+        Q_DISABLE_COPY(FamilySearchReply)
+        FamilySearchReplyPrivate * const d_ptr;
+
+        friend FamilySearch;
+        FamilySearchReply(QNetworkReply *pReply);
+
     public:
         enum Error
         {
@@ -38,27 +47,29 @@ namespace cg
             UnknownError
         };
 
-    public:
         ~FamilySearchReply();
 
-        Error error() const { return _error; }
-        QByteArray data() const { return _data; }
+        int statusCode() const;
+        Error error() const;
+        QByteArray data() const;
         QVariantMap variantMap() const;
+
+        /**
+         * Gets the ETag value from the reply header.
+         * Only available for Persons, Releationships or Change History resources.
+         * @return ETag value
+         */
+        QByteArray eTag() const;
+
+        /**
+        * Gets the Last-Modified value from the reply header.
+        * Only available for Persons, Releationships or Change History resources.
+        * @return QDateTime value
+        */
+        QDateTime lastModified() const;
 
     signals:
         void finished();
-
-    private slots:
-        void networkReplyFinished();
-
-    private:
-        friend FamilySearch;
-        FamilySearchReply(QNetworkReply *pReply);
-
-    private:
-        QNetworkReply *_pReply;
-        QByteArray _data;
-        Error _error;
     };
 }
 

@@ -14,6 +14,7 @@
 * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 #include "familysearchreply.h"
+#include "familysearchreply_p.h"
 
 #include <QNetworkReply>
 #include <QJsonDocument>
@@ -23,38 +24,79 @@
 
 namespace cg {
 
-    FamilySearchReply::FamilySearchReply(QNetworkReply *pReply)
-        : _pReply(pReply),
-        _error(NoError)
+    //
+    // FamilySearchReplyPrivate
+    //
+
+    FamilySearchReplyPrivate::FamilySearchReplyPrivate(FamilySearchReply *pFsReply, QNetworkReply *pNetworkReply)
+        : q_ptr(pFsReply),
+        pReply(pNetworkReply),
+        error(FamilySearchReply::NoError)
     {
-        if (_pReply)
-            connect(_pReply, &QNetworkReply::finished, this, &FamilySearchReply::networkReplyFinished);
+        if (pReply)
+            connect(pReply, &QNetworkReply::finished, this, &FamilySearchReplyPrivate::replyFinished);
     }
 
-    FamilySearchReply::~FamilySearchReply()
+    FamilySearchReplyPrivate::~FamilySearchReplyPrivate()
     {
-        if (_pReply)
-            delete _pReply;
+        if (pReply)
+            delete pReply;
     }
 
-    void FamilySearchReply::networkReplyFinished()
+    void FamilySearchReplyPrivate::replyFinished()
     {
-        if (_pReply)
+        Q_Q(FamilySearchReply);
+
+        if (pReply)
         {
-            if (_pReply->error() == QNetworkReply::NoError)
+            if (pReply->error() == QNetworkReply::NoError)
             {
-                _data = _pReply->readAll();
+                data = pReply->readAll();
                 //qDebug() << "Response: " << _data;
+                //QByteArrayList list = pReply->rawHeaderList();
+                //qDebug() << "Headers = " << list;
             }
             else
             {
                 //dump error
-                qDebug() << "Network Error: " << _pReply->error();
-                qDebug() << "Response error: " << _pReply->readAll();
+                qDebug() << "Network Error: " << pReply->error();
+                qDebug() << "Response error: " << pReply->readAll();
             }
         }
 
-        emit finished();
+        emit q->finished();
+    }
+
+    //
+    // FamilySearchReply
+    //
+
+    FamilySearchReply::FamilySearchReply(QNetworkReply *pReply)
+        : d_ptr(new FamilySearchReplyPrivate(this, pReply))
+    {
+    }
+
+    FamilySearchReply::~FamilySearchReply()
+    {
+    }
+
+    int FamilySearchReply::statusCode() const
+    {
+        Q_D(const FamilySearchReply);
+        return d->pReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    }
+
+
+    FamilySearchReply::Error FamilySearchReply::error() const
+    {
+        Q_D(const FamilySearchReply);
+        return d->error;
+    }
+
+    QByteArray FamilySearchReply::data() const
+    {
+        Q_D(const FamilySearchReply);
+        return d->data;
     }
 
     QVariantMap FamilySearchReply::variantMap() const
@@ -69,5 +111,29 @@ namespace cg {
         }
 
         return map;
+    }
+
+    QByteArray FamilySearchReply::eTag() const
+    {
+        Q_D(const FamilySearchReply);
+
+        QByteArray etag;
+
+        if (d->pReply && d->pReply->hasRawHeader("ETag"))
+            etag = d->pReply->rawHeader("ETag");
+
+        return etag;
+    }
+
+    QDateTime FamilySearchReply::lastModified() const
+    {
+        Q_D(const FamilySearchReply);
+
+        QDateTime dateTime;
+
+        if (d->pReply && d->pReply->hasRawHeader("Last-Modified"))
+            dateTime = QDateTime::fromString(d->pReply->rawHeader("Last-Modified"), Qt::RFC2822Date);
+
+        return dateTime;
     }
 }

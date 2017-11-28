@@ -32,42 +32,59 @@ QTEST_MAIN(FamilyTest)
 
 void FamilyTest::initTestCase()
 {
+    // set name & version for user-agent
+    QCoreApplication::setApplicationName("FamilyTest");
+    QCoreApplication::setApplicationVersion("0.1");
 }
 
 void FamilyTest::cleanupTestCase()
 {
 }
 
-void FamilyTest::testOAuthUnauthenticated()
+void FamilyTest::testLoginUnauthenticated()
 {
-    QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch());
+    QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch(FAMILYSEARCH_APP_KEY));
 
-    pFamilySearch->oauthUnauthenticated(FAMILYSEARCH_APP_KEY);
-    QSignalSpy authSpy(pFamilySearch.data(), &FamilySearch::oauthFinished);
+    pFamilySearch->loginUnauthenticated();
+    QSignalSpy authSpy(pFamilySearch.data(), &FamilySearch::loginFinished);
     QVERIFY(authSpy.wait(20000));
 
     QString token = pFamilySearch->accessToken();
     QVERIFY(!token.isEmpty());
+    QVERIFY(pFamilySearch->isLoggedIn());
+
+    pFamilySearch->logout();
+    QSignalSpy logoutSpy(pFamilySearch.data(), &FamilySearch::logoutFinished);
+    QVERIFY(logoutSpy.wait(20000));
+
+    QVERIFY(pFamilySearch->isLoggedIn() == false);
 }
 
-void FamilyTest::testOAuthPassword()
+void FamilyTest::testLogin()
 {
-    QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch());
+    QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch(FAMILYSEARCH_APP_KEY));
 
-    pFamilySearch->oauthPassword(FAMILYSEARCH_USERNAME, FAMILYSEARCH_PASSWORD, FAMILYSEARCH_APP_KEY);
-    QSignalSpy authSpy(pFamilySearch.data(), &FamilySearch::oauthFinished);
+    pFamilySearch->login(FAMILYSEARCH_USERNAME, FAMILYSEARCH_PASSWORD);
+    QSignalSpy authSpy(pFamilySearch.data(), &FamilySearch::loginFinished);
     QVERIFY(authSpy.wait(20000));
 
     QString token = pFamilySearch->accessToken();
     QVERIFY(!token.isEmpty());
+    QVERIFY(pFamilySearch->isLoggedIn());
+
+    pFamilySearch->logout();
+    QSignalSpy logoutSpy(pFamilySearch.data(), &FamilySearch::logoutFinished);
+    QVERIFY(logoutSpy.wait(20000));
+
+    QVERIFY(pFamilySearch->isLoggedIn() == false);
 }
 
 void FamilyTest::testCurrentUser()
 {
-    QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch());
+    QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch(FAMILYSEARCH_APP_KEY));
 
-    pFamilySearch->oauthPassword(FAMILYSEARCH_USERNAME, FAMILYSEARCH_PASSWORD, FAMILYSEARCH_APP_KEY);
-    QSignalSpy authSpy(pFamilySearch.data(), &FamilySearch::oauthFinished);
+    pFamilySearch->login(FAMILYSEARCH_USERNAME, FAMILYSEARCH_PASSWORD);
+    QSignalSpy authSpy(pFamilySearch.data(), &FamilySearch::loginFinished);
     QVERIFY(authSpy.wait(20000));
 
     QScopedPointer<FamilySearchReply> pReply(pFamilySearch->get("/platform/users/current", FamilySearch::FamilySearchJsonMediaType));
@@ -81,10 +98,10 @@ void FamilyTest::testCurrentUser()
 
 void FamilyTest::testPlaces()
 {
-    QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch());
+    QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch(FAMILYSEARCH_APP_KEY));
 
-    pFamilySearch->oauthUnauthenticated(FAMILYSEARCH_APP_KEY);
-    QSignalSpy authSpy(pFamilySearch.data(), &FamilySearch::oauthFinished);
+    pFamilySearch->loginUnauthenticated();
+    QSignalSpy authSpy(pFamilySearch.data(), &FamilySearch::loginFinished);
     QVERIFY(authSpy.wait(20000));
 
     QScopedPointer<FamilySearchReply> pReply(pFamilySearch->get("/platform/places/search?q=name:Paris", FamilySearch::GedcomAtomJsonMediaType));
@@ -97,10 +114,10 @@ void FamilyTest::testPlaces()
 
 void FamilyTest::testPersonAncestry()
 {
-    QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch());
+    QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch(FAMILYSEARCH_APP_KEY));
 
-    pFamilySearch->oauthPassword(FAMILYSEARCH_USERNAME, FAMILYSEARCH_PASSWORD, FAMILYSEARCH_APP_KEY);
-    QSignalSpy authSpy(pFamilySearch.data(), &FamilySearch::oauthFinished);
+    pFamilySearch->login(FAMILYSEARCH_USERNAME, FAMILYSEARCH_PASSWORD);
+    QSignalSpy authSpy(pFamilySearch.data(), &FamilySearch::loginFinished);
     QVERIFY(authSpy.wait(20000));
 
     QScopedPointer<FamilySearchReply> pReply(pFamilySearch->get("/platform/tree/ancestry?person=KW43-NYT", FamilySearch::FamilySearchJsonMediaType));
@@ -116,4 +133,23 @@ void FamilyTest::testPersonAncestry()
 
     QVariantMap person0display = person0["display"].toMap();
     QVERIFY(person0display["ascendancyNumber"] == 1);
+}
+
+void FamilyTest::testEtag()
+{
+    QScopedPointer<FamilySearch> pFamilySearch(new FamilySearch(FAMILYSEARCH_APP_KEY));
+
+    pFamilySearch->login(FAMILYSEARCH_USERNAME, FAMILYSEARCH_PASSWORD);
+    QSignalSpy authSpy(pFamilySearch.data(), &FamilySearch::loginFinished);
+    QVERIFY(authSpy.wait(20000));
+
+    QScopedPointer<FamilySearchReply> pReply(pFamilySearch->head("/platform/tree/persons/KW43-NYT", FamilySearch::FamilySearchJsonMediaType));
+    QSignalSpy replySpy(pReply.data(), &FamilySearchReply::finished);
+    QVERIFY(replySpy.wait(5000));
+
+    QByteArray etag = pReply->eTag();
+    QVERIFY(!etag.isEmpty());
+
+    QDateTime lastModified = pReply->lastModified();
+    QVERIFY(!lastModified.isNull());
 }
