@@ -51,7 +51,7 @@ namespace cg {
             baseUrl = "https://beta.familysearch.org";
             break;
         case FamilySearch::IntegrationEnvironment:
-            baseUrl = "https://integration.familysearch.org";
+            baseUrl = "https://api-integ.familysearch.org";
             break;
         }
     }
